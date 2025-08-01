@@ -279,6 +279,47 @@ void OBSBasic::CreateHotkeys()
 	sourceScreenshotHotkey = obs_hotkey_register_frontend("OBSBasic.SelectedSourceScreenshot",
 							      Str("Screenshot.SourceHotkey"), screenshotSource, this);
 	LoadHotkey(sourceScreenshotHotkey, "OBSBasic.SelectedSourceScreenshot");
+
+	// 자막 관련 핫키들
+	auto subtitleNext = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		if (pressed)
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), "SubtitleNextHotkey",
+						  Qt::QueuedConnection);
+	};
+
+	subtitleNextHotkey = obs_hotkey_register_frontend("OBSBasic.SubtitleNext", 
+						"Subtitle.Next", subtitleNext, this);
+	LoadHotkey(subtitleNextHotkey, "OBSBasic.SubtitleNext");
+
+	auto subtitlePrev = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		if (pressed)
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), "SubtitlePrevHotkey",
+						  Qt::QueuedConnection);
+	};
+
+	subtitlePrevHotkey = obs_hotkey_register_frontend("OBSBasic.SubtitlePrev", 
+						"Subtitle.Prev", subtitlePrev, this);
+	LoadHotkey(subtitlePrevHotkey, "OBSBasic.SubtitlePrev");
+
+	auto subtitleClear = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		if (pressed)
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), "SubtitleClearHotkey",
+						  Qt::QueuedConnection);
+	};
+
+	subtitleClearHotkey = obs_hotkey_register_frontend("OBSBasic.SubtitleClear", 
+						"Subtitle.Clear", subtitleClear, this);
+	LoadHotkey(subtitleClearHotkey, "OBSBasic.SubtitleClear");
+
+	auto subtitleControlPanel = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		if (pressed)
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), "SubtitleControlPanelHotkey",
+						  Qt::QueuedConnection);
+	};
+
+	subtitleControlPanelHotkey = obs_hotkey_register_frontend("OBSBasic.SubtitleControlPanel", 
+						"Subtitle.ControlPanel", subtitleControlPanel, this);
+	LoadHotkey(subtitleControlPanelHotkey, "OBSBasic.SubtitleControlPanel");
 }
 
 void OBSBasic::ClearHotkeys()
@@ -298,6 +339,10 @@ void OBSBasic::ClearHotkeys()
 	obs_hotkey_unregister(statsHotkey);
 	obs_hotkey_unregister(screenshotHotkey);
 	obs_hotkey_unregister(sourceScreenshotHotkey);
+	obs_hotkey_unregister(subtitleNextHotkey);
+	obs_hotkey_unregister(subtitlePrevHotkey);
+	obs_hotkey_unregister(subtitleClearHotkey);
+	obs_hotkey_unregister(subtitleControlPanelHotkey);
 }
 
 void OBSBasic::ResetStatsHotkey()

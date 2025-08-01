@@ -239,6 +239,50 @@ void OBSBasic::on_actionAdvAudioProperties_triggered()
 	advAudioWindow->SetIconsVisible(iconsVisible);
 }
 
+void OBSBasic::on_actionSubtitleControl_triggered()
+{
+	if (subtitleControlDock != nullptr) {
+		subtitleControlDock->raise();
+		subtitleControlDock->activateWindow();
+		return;
+	}
+
+	subtitleControlDock = new SubtitleControlDock(this);
+	addDockWidget(Qt::RightDockWidgetArea, subtitleControlDock);
+	subtitleControlDock->show();
+	
+	connect(subtitleControlDock, &SubtitleControlDock::SubtitleControlDockClosed,
+		[this]() {
+			subtitleControlDock = nullptr;
+		});
+}
+
+void OBSBasic::SubtitleNextHotkey()
+{
+	if (subtitleControlDock && subtitleControlDock->isVisible()) {
+		subtitleControlDock->GetSubtitleManager()->NextSubtitle();
+	}
+}
+
+void OBSBasic::SubtitlePrevHotkey()
+{
+	if (subtitleControlDock && subtitleControlDock->isVisible()) {
+		subtitleControlDock->GetSubtitleManager()->PreviousSubtitle();
+	}
+}
+
+void OBSBasic::SubtitleClearHotkey()
+{
+	if (subtitleControlDock && subtitleControlDock->isVisible()) {
+		subtitleControlDock->GetSubtitleManager()->ClearCurrentSubtitle();
+	}
+}
+
+void OBSBasic::SubtitleControlPanelHotkey()
+{
+	on_actionSubtitleControl_triggered();
+}
+
 static BPtr<char> ReadLogFile(const char *subdir, const char *log)
 {
 	char logDir[512];

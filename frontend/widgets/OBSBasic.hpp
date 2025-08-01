@@ -41,6 +41,8 @@
 
 #include <deque>
 
+#include "../components/SubtitleControlPanel.hpp"
+
 extern volatile bool recording_paused;
 
 class ColorSelect;
@@ -54,6 +56,7 @@ class OBSLogViewer;
 class OBSMissingFiles;
 class OBSProjector;
 class VolControl;
+class SubtitleControlDock;
 #ifdef YOUTUBE_ENABLED
 class YouTubeAppDock;
 #endif
@@ -475,6 +478,10 @@ private:
 	obs_hotkey_id statsHotkey = 0;
 	obs_hotkey_id screenshotHotkey = 0;
 	obs_hotkey_id sourceScreenshotHotkey = 0;
+	obs_hotkey_id subtitleNextHotkey = 0;
+	obs_hotkey_id subtitlePrevHotkey = 0;
+	obs_hotkey_id subtitleClearHotkey = 0;
+	obs_hotkey_id subtitleControlPanelHotkey = 0;
 
 	obs_hotkey_pair_id streamingHotkeys, recordingHotkeys, pauseHotkeys, replayBufHotkeys, vcamHotkeys,
 		togglePreviewHotkeys, contextBarHotkeys;
@@ -489,6 +496,10 @@ private:
 private slots:
 	void ProcessHotkey(obs_hotkey_id id, bool pressed);
 	void ResetStatsHotkey();
+	void SubtitleNextHotkey();
+	void SubtitlePrevHotkey();
+	void SubtitleClearHotkey();
+	void SubtitleControlPanelHotkey();
 
 	/* -------------------------------------
 	 * MARK: - OBSBasic_Icons
@@ -560,6 +571,7 @@ private:
 	QPointer<OBSBasicTransform> transformWindow;
 	QPointer<OBSBasicAdvAudio> advAudioWindow;
 	QPointer<OBSBasicFilters> filters;
+	QPointer<SubtitleControlDock> subtitleControlDock;
 	QPointer<OBSAbout> about;
 	QPointer<OBSLogViewer> logView;
 	QPointer<QWidget> stats;
@@ -603,6 +615,7 @@ private slots:
 	void on_action_Settings_triggered();
 	void on_actionShowMacPermissions_triggered();
 	void on_actionAdvAudioProperties_triggered();
+	void on_actionSubtitleControl_triggered();
 	void on_actionShowLogs_triggered();
 	void on_actionUploadCurrentLog_triggered();
 	void on_actionUploadLastLog_triggered();

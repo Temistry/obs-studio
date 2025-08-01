@@ -859,6 +859,7 @@
     <addaction name="actionLockPreview"/>
     <addaction name="separator"/>
     <addaction name="actionAdvAudioProperties"/>
+    <addaction name="actionSubtitleControl"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="profileMenu">
@@ -2011,6 +2012,11 @@
   <action name="actionAdvAudioProperties">
    <property name="text">
     <string>Basic.MainMenu.Edit.AdvAudio</string>
+   </property>
+  </action>
+  <action name="actionSubtitleControl">
+   <property name="text">
+    <string>자막 전환 컨트롤</string>
    </property>
   </action>
   <action name="actionWebsite">

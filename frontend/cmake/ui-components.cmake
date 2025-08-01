@@ -67,6 +67,10 @@ target_sources(
     components/SourceTreeItem.hpp
     components/SourceTreeModel.cpp
     components/SourceTreeModel.hpp
+    components/SubtitleManager.cpp
+    components/SubtitleManager.hpp
+    components/SubtitleControlPanel.cpp
+    components/SubtitleControlPanel.hpp
     components/TextSourceToolbar.cpp
     components/TextSourceToolbar.hpp
     components/UIValidation.cpp
