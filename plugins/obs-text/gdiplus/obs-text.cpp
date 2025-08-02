@@ -273,6 +273,9 @@ struct TextSource {
 
 	inline ~TextSource()
 	{
+		// Font 객체를 먼저 해제하여 Graphics/HDC 객체보다 먼저 파괴되도록 함
+		font.reset();
+		
 		if (tex) {
 			obs_enter_graphics();
 			gs_texture_destroy(tex);
@@ -307,8 +310,9 @@ static time_t get_modified_timestamp(const char *filename)
 
 void TextSource::UpdateFont()
 {
+	// 기존 Font 객체를 먼저 안전하게 해제
+	font.reset();
 	hfont = nullptr;
-	font.reset(nullptr);
 
 	LOGFONT lf = {};
 	lf.lfHeight = face_size;
@@ -329,7 +333,8 @@ void TextSource::UpdateFont()
 		hfont = CreateFontIndirect(&lf);
 	}
 
-	if (hfont)
+	// HDC가 유효한지 확인 후 Font 생성
+	if (hfont && hdc)
 		font.reset(new Font(hdc, hfont));
 }
 
