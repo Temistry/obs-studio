@@ -31,6 +31,7 @@
 void OBSBasic::CreateProgramDisplay()
 {
 	program = new OBSQTDisplay();
+	program->setStyleSheet("border: 3px solid red;");
 
 	program->setContextMenuPolicy(Qt::CustomContextMenu);
 	connect(program.data(), &QWidget::customContextMenuRequested, this, &OBSBasic::ProgramViewContextMenuRequested);
@@ -231,8 +232,8 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 
 		programWidget->setLayout(programLayout);
 
-		ui->previewLayout->addWidget(programOptions);
-		ui->previewLayout->addWidget(programWidget);
+		ui->previewLayout->insertWidget(0, programWidget);
+		ui->previewLayout->insertWidget(1, programOptions);
 		ui->previewLayout->setAlignment(programOptions, Qt::AlignCenter);
 
 		OnEvent(OBS_FRONTEND_EVENT_STUDIO_MODE_ENABLED);

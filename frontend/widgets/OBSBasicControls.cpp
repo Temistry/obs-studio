@@ -43,6 +43,9 @@ OBSBasicControls::OBSBasicControls(OBSBasic *main) : QFrame(nullptr), ui(new Ui:
 		ui->modeSwitch, &QPushButton::clicked, this, [this]() { emit this->StudioModeButtonClicked(); },
 		Qt::DirectConnection);
 	connect(
+		ui->subtitleButton, &QPushButton::clicked, this, [this]() { emit this->SubtitleButtonClicked(); },
+		Qt::DirectConnection);
+	connect(
 		ui->settingsButton, &QPushButton::clicked, this, [this]() { emit this->SettingsButtonClicked(); },
 		Qt::DirectConnection);
 

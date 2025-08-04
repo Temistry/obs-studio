@@ -286,6 +286,8 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	connect(controls, &OBSBasicControls::StudioModeButtonClicked, this, &OBSBasic::TogglePreviewProgramMode);
 
+	connect(controls, &OBSBasicControls::SubtitleButtonClicked, this, &OBSBasic::on_actionSubtitleControl_triggered);
+
 	connect(controls, &OBSBasicControls::SettingsButtonClicked, this, &OBSBasic::on_action_Settings_triggered);
 
 	startingDockLayout = saveState();

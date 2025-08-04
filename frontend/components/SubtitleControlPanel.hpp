@@ -25,6 +25,9 @@
 #include <QTabWidget>
 #include <QScrollArea>
 #include "SubtitleManager.hpp"
+#include "SlideManager.hpp"
+#include "SlideEditorPanel.hpp"
+#include "SlideOutputManager.hpp"
 
 class SubtitleControlDock;
 
@@ -33,6 +36,9 @@ class SubtitleControlPanel : public QWidget {
 
 private:
     SubtitleManager *subtitleManager;
+    SlideManager *slideManager;
+    SlideEditorPanel *slideEditorPanel;
+    SlideOutputManager *slideOutputManager;
     
     // 메인 레이아웃
     QVBoxLayout *mainLayout;
@@ -98,7 +104,16 @@ private:
     QGridLayout *quickLayout;  
     QList<QPushButton*> quickButtons;
     
+    // PPT 스타일 슬라이드 에디터
+    QTabWidget *mainTabWidget;
+    QWidget *legacySubtitleTab;
+    QWidget *slideEditorTab;
+    QPushButton *openSlideEditorButton;
+    QPushButton *toggleModeButton;
+    
     void SetupUI();
+    void SetupLegacySubtitleTab();
+    void SetupSlideEditorTab();
     void RefreshSourceList();
     void RefreshSubtitleList();
     void RefreshQuickButtons();
@@ -112,6 +127,9 @@ public:
     ~SubtitleControlPanel();
     
     SubtitleManager* GetSubtitleManager() const { return subtitleManager; }
+    SlideManager* GetSlideManager() const { return slideManager; }
+    SlideEditorPanel* GetSlideEditorPanel() const { return slideEditorPanel; }
+    SlideOutputManager* GetSlideOutputManager() const { return slideOutputManager; }
 
 private slots:
     // 소스 관련
@@ -150,6 +168,12 @@ private slots:
     void OnTargetSourceChanged(const QString &sourceName);
     void OnWorshipFoldersChanged();
     void OnCurrentFolderChanged(const QString &folderId);
+    
+    // 슬라이드 관련
+    void OnOpenSlideEditor();
+    void OnToggleMode();
+    void OnSlideOutputRequested(const QString &htmlContent);
+    void OnSlideOutputCleared();
 
 signals:
     void SubtitleControlPanelClosed();

@@ -42,6 +42,7 @@
 #include <deque>
 
 #include "../components/SubtitleControlPanel.hpp"
+#include "../models/SceneCollection.hpp"
 
 extern volatile bool recording_paused;
 
@@ -65,7 +66,6 @@ class QWidgetAction;
 struct QuickTransition;
 
 namespace OBS {
-class SceneCollection;
 struct Rect;
 } // namespace OBS
 

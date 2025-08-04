@@ -57,6 +57,14 @@ target_sources(
     components/SceneTree.hpp
     components/SilentUpdateCheckBox.hpp
     components/SilentUpdateSpinBox.hpp
+    components/SlideEditorPanel.cpp
+    components/SlideEditorPanel.hpp
+    components/SlideManager.cpp
+    components/SlideManager.hpp
+    components/SlideOutputManager.cpp
+    components/SlideOutputManager.hpp
+    components/SlideTextBox.cpp
+    components/SlideTextBox.hpp
     components/SourceToolbar.cpp
     components/SourceToolbar.hpp
     components/SourceTree.cpp

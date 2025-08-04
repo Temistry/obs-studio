@@ -8,9 +8,12 @@
 #include "moc_SubtitleControlPanel.cpp"
 
 SubtitleControlPanel::SubtitleControlPanel(QWidget *parent)
-    : QWidget(parent), subtitleManager(nullptr), editingIndex(-1)
+    : QWidget(parent), subtitleManager(nullptr), slideManager(nullptr), 
+      slideEditorPanel(nullptr), slideOutputManager(nullptr), editingIndex(-1)
 {
     subtitleManager = new SubtitleManager(this);
+    slideManager = new SlideManager(this);
+    slideOutputManager = new SlideOutputManager(slideManager, this);
     SetupUI();
     
     // SubtitleManager 시그널 연결
@@ -47,8 +50,28 @@ void SubtitleControlPanel::SetupUI()
 {
     mainLayout = new QVBoxLayout(this);
     
+    // 탭 위젯 생성 (기존 자막 시스템 vs 새 슬라이드 시스템)
+    mainTabWidget = new QTabWidget(this);
+    
+    // 레거시 자막 탭 설정
+    legacySubtitleTab = new QWidget();
+    SetupLegacySubtitleTab();
+    mainTabWidget->addTab(legacySubtitleTab, "기존 자막 시스템");
+    
+    // 슬라이드 에디터 탭 설정
+    slideEditorTab = new QWidget();
+    SetupSlideEditorTab();
+    mainTabWidget->addTab(slideEditorTab, "PPT 스타일 슬라이드");
+    
+    mainLayout->addWidget(mainTabWidget);
+}
+
+void SubtitleControlPanel::SetupLegacySubtitleTab()
+{
+    QVBoxLayout *tabLayout = new QVBoxLayout(legacySubtitleTab);
+    
     // 메인 스크롤 영역 생성
-    mainScrollArea = new QScrollArea(this);
+    mainScrollArea = new QScrollArea(legacySubtitleTab);
     mainScrollWidget = new QWidget();
     
     mainSplitter = new QSplitter(Qt::Vertical, mainScrollWidget);
@@ -64,7 +87,7 @@ void SubtitleControlPanel::SetupUI()
     mainScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     mainScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     
-    mainLayout->addWidget(mainScrollArea);
+    tabLayout->addWidget(mainScrollArea);
     
     // 타겟 소스 선택
     sourceGroup = new QGroupBox("타겟 텍스트 소스", this);
@@ -677,6 +700,65 @@ void SubtitleControlPanel::OnCurrentFolderChanged(const QString &folderId)
     RefreshSubtitleList();
     RefreshQuickButtons();
     UpdateCurrentLabel();
+}
+
+void SubtitleControlPanel::SetupSlideEditorTab()
+{
+    QVBoxLayout *tabLayout = new QVBoxLayout(slideEditorTab);
+    
+    // 슬라이드 에디터 패널 생성
+    slideEditorPanel = new SlideEditorPanel(slideEditorTab);
+    slideEditorPanel->setSlideManager(slideManager);
+    
+    tabLayout->addWidget(slideEditorPanel);
+    
+    // 출력 관리자와 에디터 패널 연결
+    connect(slideEditorPanel, &SlideEditorPanel::slideOutputRequested,
+            this, &SubtitleControlPanel::OnSlideOutputRequested);
+    connect(slideEditorPanel, &SlideEditorPanel::outputCleared,
+            this, &SubtitleControlPanel::OnSlideOutputCleared);
+}
+
+void SubtitleControlPanel::OnOpenSlideEditor()
+{
+    if (slideEditorPanel) {
+        mainTabWidget->setCurrentWidget(slideEditorTab);
+    }
+}
+
+void SubtitleControlPanel::OnToggleMode()
+{
+    // 탭 전환
+    int currentIndex = mainTabWidget->currentIndex();
+    int newIndex = (currentIndex == 0) ? 1 : 0;
+    mainTabWidget->setCurrentIndex(newIndex);
+}
+
+void SubtitleControlPanel::OnSlideOutputRequested(const QString &htmlContent)
+{
+    // HTML 출력을 OBS 브라우저 소스로 전송
+    if (slideOutputManager) {
+        // 브라우저 소스가 설정되어 있지 않다면 기본 소스를 찾아서 설정
+        if (slideOutputManager->getTargetBrowserSource().isEmpty()) {
+            // "Slide Output" 또는 "Browser Source" 이름의 소스를 찾기
+            OBSSourceAutoRelease source = obs_get_source_by_name("Slide Output");
+            if (!source) {
+                source = obs_get_source_by_name("Browser Source");
+            }
+            if (source) {
+                slideOutputManager->setTargetBrowserSource(obs_source_get_name(source));
+            }
+        }
+        
+        slideOutputManager->outputCurrentSlide();
+    }
+}
+
+void SubtitleControlPanel::OnSlideOutputCleared()
+{
+    if (slideOutputManager) {
+        slideOutputManager->clearOutput();
+    }
 }
 
 void SubtitleControlPanel::closeEvent(QCloseEvent *event)
