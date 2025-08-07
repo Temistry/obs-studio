@@ -25,6 +25,7 @@
 #include <QTabWidget>
 #include <QScrollArea>
 #include "SubtitleManager.hpp"
+#include "SubtitleEditingPanel.hpp"
 
 class SubtitleControlDock;
 
@@ -68,22 +69,8 @@ private:
     QPushButton *importButton;
     QPushButton *exportButton;
     
-    // 자막 편집
-    QGroupBox *editGroup;
-    QVBoxLayout *editLayout;
-    QScrollArea *editScrollArea;
-    QWidget *editScrollWidget;
-    QVBoxLayout *editScrollLayout;
-    QHBoxLayout *titleLayout;
-    QLabel *titleLabel;
-    QLineEdit *titleEdit;
-    QLabel *contentLabel;
-    QTextEdit *contentEdit;
-    QHBoxLayout *editButtonLayout;
-    QPushButton *saveButton;
-    QPushButton *cancelButton;
-    QPushButton *bibleSearchButton;
-    QPushButton *hymnSearchButton;
+    // 편집 패널 참조 (별도 UI로 분리됨)
+    SubtitleEditingDock *editingDock;
     
     // 빠른 전환 컨트롤
     QGroupBox *controlGroup;
@@ -106,8 +93,8 @@ private:
     void RefreshQuickButtons();
     void RefreshFolderTree();
     void UpdateCurrentLabel();
-    void SetEditMode(bool enabled, int index = -1);
-    int editingIndex;
+    void CreateEditingDock();
+    void ShowEditingDock();
 
 public:
     explicit SubtitleControlPanel(QWidget *parent = nullptr);
@@ -129,17 +116,13 @@ private slots:
     // 리스트 관리
     void OnSubtitleSelectionChanged();
     void OnAddSubtitle();
-    void OnEditSubtitle();
     void OnRemoveSubtitle();
     void OnClearSubtitles();
     void OnImportSubtitles();
     void OnExportSubtitles();
     
-    // 편집 관련
-    void OnSaveSubtitle();
-    void OnCancelEdit();
-    void OnBibleSearch();
-    void OnHymnSearch();
+    // 편집 관련 (편집 도킹으로 이동됨)
+    void OnOpenEditingDock();
     
     // 전환 컨트롤
     void OnPreviousSubtitle();

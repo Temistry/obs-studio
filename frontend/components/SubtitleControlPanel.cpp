@@ -3,12 +3,13 @@
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QCloseEvent>
+#include <QMainWindow>
 #include <obs.hpp>
 #include <qt-wrappers.hpp>
 #include "moc_SubtitleControlPanel.cpp"
 
 SubtitleControlPanel::SubtitleControlPanel(QWidget *parent)
-    : QWidget(parent), subtitleManager(nullptr), editingIndex(-1)
+    : QWidget(parent), subtitleManager(nullptr)
 {
     subtitleManager = new SubtitleManager(this);
     SetupUI();
@@ -31,7 +32,7 @@ SubtitleControlPanel::SubtitleControlPanel(QWidget *parent)
     RefreshSubtitleList();
     RefreshQuickButtons();
     UpdateCurrentLabel();
-    SetEditMode(false);
+    // 편집 모드는 별도 패널에서 관리됨
     
     setWindowTitle("자막 전환 컨트롤");
     resize(650, 700);  // 스크롤을 고려한 크기 조정
@@ -147,9 +148,9 @@ void SubtitleControlPanel::SetupUI()
     connect(subtitleList, &QListWidget::itemSelectionChanged,
             this, &SubtitleControlPanel::OnSubtitleSelectionChanged);
     connect(subtitleList, &QListWidget::itemDoubleClicked,
-            this, &SubtitleControlPanel::OnEditSubtitle);
+            this, &SubtitleControlPanel::OnOpenEditingDock);
     connect(addButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnAddSubtitle);
-    connect(editButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnEditSubtitle);
+    connect(editButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnOpenEditingDock);
     connect(removeButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnRemoveSubtitle);
     connect(clearButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnClearSubtitles);
     connect(importButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnImportSubtitles);
@@ -157,60 +158,8 @@ void SubtitleControlPanel::SetupUI()
     
     mainSplitter->addWidget(listGroup);
     
-    // 자막 편집
-    editGroup = new QGroupBox("자막 편집", this);
-    editLayout = new QVBoxLayout(editGroup);
-    
-    // 스크롤 영역 생성
-    editScrollArea = new QScrollArea(editGroup);
-    editScrollWidget = new QWidget();
-    editScrollLayout = new QVBoxLayout(editScrollWidget);
-    
-    titleLayout = new QHBoxLayout();
-    titleLabel = new QLabel("제목:", editScrollWidget);
-    titleEdit = new QLineEdit(editScrollWidget);
-    titleLayout->addWidget(titleLabel);
-    titleLayout->addWidget(titleEdit);
-    
-    contentLabel = new QLabel("내용:", editScrollWidget);
-    contentEdit = new QTextEdit(editScrollWidget);
-    contentEdit->setMinimumHeight(100);  // 최소 높이 설정
-    contentEdit->setMaximumHeight(200);  // 최대 높이 증가
-    
-    editButtonLayout = new QHBoxLayout();
-    saveButton = new QPushButton("저장", editScrollWidget);
-    cancelButton = new QPushButton("취소", editScrollWidget);
-    bibleSearchButton = new QPushButton("성경 검색", editScrollWidget);
-    hymnSearchButton = new QPushButton("찬송가 검색", editScrollWidget);
-    editButtonLayout->addWidget(bibleSearchButton);
-    editButtonLayout->addWidget(hymnSearchButton);
-    editButtonLayout->addStretch();
-    editButtonLayout->addWidget(saveButton);
-    editButtonLayout->addWidget(cancelButton);
-    
-    // 스크롤 위젯에 레이아웃 추가
-    editScrollLayout->addLayout(titleLayout);
-    editScrollLayout->addWidget(contentLabel);
-    editScrollLayout->addWidget(contentEdit);
-    editScrollLayout->addLayout(editButtonLayout);
-    editScrollLayout->addStretch();  // 여백 추가
-    
-    // 스크롤 영역 설정
-    editScrollArea->setWidget(editScrollWidget);
-    editScrollArea->setWidgetResizable(true);
-    editScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    editScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    editScrollArea->setMinimumHeight(200);  // 스크롤 영역 최소 높이
-    
-    // 메인 레이아웃에 스크롤 영역 추가
-    editLayout->addWidget(editScrollArea);
-    
-    connect(saveButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnSaveSubtitle);
-    connect(cancelButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnCancelEdit);
-    connect(bibleSearchButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnBibleSearch);
-    connect(hymnSearchButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnHymnSearch);
-    
-    mainSplitter->addWidget(editGroup);
+    // 자막 편집 도킹 패널 생성 (별도 UI로 분리됨)
+    CreateEditingDock();
     
     // 빠른 전환 컨트롤
     controlGroup = new QGroupBox("전환 컨트롤", this);
@@ -374,31 +323,38 @@ void SubtitleControlPanel::UpdateCurrentLabel()
     }
 }
 
-void SubtitleControlPanel::SetEditMode(bool enabled, int index)
+void SubtitleControlPanel::CreateEditingDock()
 {
-    editingIndex = index;
-    editGroup->setEnabled(enabled);
-    
-    // 성경 검색 버튼은 편집 모드일 때만 활성화하고, 성경 데이터가 로드되었을 때만 활성화
-    bibleSearchButton->setEnabled(enabled && subtitleManager->IsBibleDataLoaded());
-    
-    // 찬송가 검색 버튼은 편집 모드일 때만 활성화
-    hymnSearchButton->setEnabled(enabled);
-    
-    if (enabled && index >= 0) {
-        SubtitleItem item = subtitleManager->GetSubtitle(index);
-        titleEdit->setText(item.title);
-        contentEdit->setPlainText(item.content);
-        titleEdit->setFocus();
-    } else if (enabled) {
-        // 새 자막 추가 모드
-        titleEdit->clear();
-        contentEdit->clear();
-        titleEdit->setFocus();
-    } else {
-        titleEdit->clear();
-        contentEdit->clear();
+    editingDock = nullptr; // 지연 생성 방식 사용
+}
+
+void SubtitleControlPanel::ShowEditingDock()
+{
+    if (!editingDock) {
+        // 메인 윈도우 찾기
+        QWidget *mainWindow = this;
+        while (mainWindow->parentWidget()) {
+            mainWindow = mainWindow->parentWidget();
+        }
+        
+        // 편집 도킹 생성
+        editingDock = new SubtitleEditingDock(mainWindow);
+        editingDock->SetSubtitleManager(subtitleManager);
+        
+        // 메인 윈도우가 QMainWindow라면 도킹 추가
+        if (QMainWindow *mw = qobject_cast<QMainWindow*>(mainWindow)) {
+            mw->addDockWidget(Qt::RightDockWidgetArea, editingDock);
+        }
+        
+        connect(editingDock, &SubtitleEditingDock::EditingDockClosed,
+                [this]() {
+                    editingDock = nullptr; // 도킹이 닫히면 참조 제거
+                });
     }
+    
+    editingDock->show();
+    editingDock->raise();
+    editingDock->activateWindow();
 }
 
 void SubtitleControlPanel::OnSourceChanged()
@@ -491,14 +447,18 @@ void SubtitleControlPanel::OnAddSubtitle()
         QMessageBox::information(this, "알림", "먼저 예배 폴더를 선택하거나 생성해주세요.");
         return;
     }
-    SetEditMode(true, -1);
+    ShowEditingDock();
+    if (editingDock && editingDock->GetEditingPanel()) {
+        editingDock->GetEditingPanel()->StartNewSubtitle();
+    }
 }
 
-void SubtitleControlPanel::OnEditSubtitle()
+void SubtitleControlPanel::OnOpenEditingDock()
 {
+    ShowEditingDock();
     int row = subtitleList->currentRow();
-    if (row >= 0) {
-        SetEditMode(true, row);
+    if (row >= 0 && editingDock && editingDock->GetEditingPanel()) {
+        editingDock->GetEditingPanel()->StartEditing(row);
     }
 }
 
@@ -554,72 +514,9 @@ void SubtitleControlPanel::OnExportSubtitles()
     }
 }
 
-void SubtitleControlPanel::OnSaveSubtitle()
-{
-    QString title = titleEdit->text().trimmed();
-    QString content = contentEdit->toPlainText().trimmed();
-    
-    if (title.isEmpty()) {
-        QMessageBox::warning(this, "경고", "제목을 입력해주세요.");
-        return;
-    }
-    
-    if (editingIndex >= 0) {
-        // 기존 자막 수정
-        if (!subtitleManager->GetCurrentFolderId().isEmpty()) {
-            subtitleManager->UpdateSubtitleInCurrentFolder(editingIndex, title, content);
-        } else {
-            subtitleManager->UpdateSubtitle(editingIndex, title, content);
-        }
-    } else {
-        // 새 자막 추가
-        if (!subtitleManager->GetCurrentFolderId().isEmpty()) {
-            subtitleManager->AddSubtitleToCurrentFolder(title, content);
-        } else {
-            subtitleManager->AddSubtitle(title, content);
-        }
-    }
-    
-    SetEditMode(false);
-}
+// 편집 기능은 SubtitleEditingPanel로 이동됨
 
-void SubtitleControlPanel::OnCancelEdit()
-{
-    SetEditMode(false);
-}
-
-void SubtitleControlPanel::OnBibleSearch()
-{
-    if (!subtitleManager->IsBibleDataLoaded()) {
-        QMessageBox::warning(this, "경고", "성경 데이터가 로드되지 않았습니다.");
-        return;
-    }
-    
-    BibleSearchDialog dialog(subtitleManager, this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString title = dialog.GetSelectedTitle();
-        QString content = dialog.GetSelectedText();
-        
-        if (!title.isEmpty() && !content.isEmpty()) {
-            titleEdit->setText(title);
-            contentEdit->setPlainText(content);
-        }
-    }
-}
-
-void SubtitleControlPanel::OnHymnSearch()
-{
-    HymnSearchDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString title = dialog.GetSelectedTitle();
-        QString content = dialog.GetSelectedText();
-        
-        if (!title.isEmpty() && !content.isEmpty()) {
-            titleEdit->setText(title);
-            contentEdit->setPlainText(content);
-        }
-    }
-}
+// 편집, 성경검색, 찬송가검색 기능은 SubtitleEditingPanel로 이동됨
 
 void SubtitleControlPanel::OnPreviousSubtitle()
 {

@@ -71,6 +71,10 @@ target_sources(
     components/SubtitleManager.hpp
     components/SubtitleControlPanel.cpp
     components/SubtitleControlPanel.hpp
+    components/SubtitleEditor.cpp
+    components/SubtitleEditor.hpp
+    components/SubtitleEditingPanel.cpp
+    components/SubtitleEditingPanel.hpp
     components/TextSourceToolbar.cpp
     components/TextSourceToolbar.hpp
     components/UIValidation.cpp
