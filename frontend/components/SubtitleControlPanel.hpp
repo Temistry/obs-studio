@@ -81,8 +81,10 @@ private:
     QPushButton *clearCurrentButton;
     QPushButton *nextButton;
     
-    // 빠른 액세스 버튼들 (최대 12개)
+    // 빠른 액세스 버튼들 (스크롤 가능)
     QGroupBox *quickGroup;
+    QScrollArea *quickScrollArea;
+    QWidget *quickScrollWidget;
     QGridLayout *quickLayout;  
     QList<QPushButton*> quickButtons;
     

@@ -184,14 +184,32 @@ void SubtitleControlPanel::SetupUI()
     
     mainSplitter->addWidget(controlGroup);
     
-    // 빠른 액세스 버튼들
+    // 빠른 액세스 버튼들 (스크롤 가능)
     quickGroup = new QGroupBox("빠른 전환", this);
-    quickLayout = new QGridLayout(quickGroup);
+    QVBoxLayout *quickGroupLayout = new QVBoxLayout(quickGroup);
     
-    // 3x4 그리드로 12개 버튼 배치
+    // 스크롤 영역 생성
+    quickScrollArea = new QScrollArea(quickGroup);
+    quickScrollWidget = new QWidget();
+    quickLayout = new QGridLayout(quickScrollWidget);
+    quickLayout->setSpacing(2);
+    quickLayout->setContentsMargins(5, 5, 5, 5);
+    
+    // 스크롤 영역 설정
+    quickScrollArea->setWidget(quickScrollWidget);
+    quickScrollArea->setWidgetResizable(true);
+    quickScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    quickScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    quickScrollArea->setMinimumHeight(200);
+    quickScrollArea->setMaximumHeight(300);
+    
+    quickGroupLayout->addWidget(quickScrollArea);
+    
+    // 초기에는 12개 버튼 생성 (추후 동적으로 확장 가능)
     for (int i = 0; i < 12; ++i) {
-        QPushButton *button = new QPushButton(QString::number(i + 1), quickGroup);
+        QPushButton *button = new QPushButton(QString::number(i + 1), quickScrollWidget);
         button->setMinimumHeight(40);
+        button->setMinimumWidth(80);
         button->setProperty("subtitleIndex", i);
         connect(button, &QPushButton::clicked, this, &SubtitleControlPanel::OnQuickButtonClicked);
         quickButtons.append(button);
@@ -286,21 +304,46 @@ void SubtitleControlPanel::RefreshSubtitleList()
 void SubtitleControlPanel::RefreshQuickButtons()
 {
     QList<SubtitleItem> subtitles = subtitleManager->GetAllSubtitles();
+    int subtitleCount = subtitles.size();
     
+    // 필요한 버튼 수보다 적으면 버튼을 추가 생성
+    while (quickButtons.size() < subtitleCount) {
+        int index = quickButtons.size();
+        QPushButton *button = new QPushButton(QString::number(index + 1), quickScrollWidget);
+        button->setMinimumHeight(40);
+        button->setMinimumWidth(80);
+        button->setProperty("subtitleIndex", index);
+        connect(button, &QPushButton::clicked, this, &SubtitleControlPanel::OnQuickButtonClicked);
+        quickButtons.append(button);
+        
+        // 4열 그리드로 배치
+        quickLayout->addWidget(button, index / 4, index % 4);
+    }
+    
+    // 모든 버튼 업데이트
     for (int i = 0; i < quickButtons.size(); ++i) {
         QPushButton *button = quickButtons[i];
         
-        if (i < subtitles.size()) {
+        if (i < subtitleCount) {
             const SubtitleItem &item = subtitles[i];
             QString buttonText = QString("%1\n%2").arg(i + 1).arg(item.title);
             button->setText(buttonText);
             button->setEnabled(item.enabled);
             button->setToolTip(item.content);
+            button->setVisible(true);
         } else {
-            button->setText(QString::number(i + 1));
-            button->setEnabled(false);
-            button->setToolTip("");
+            // 사용하지 않는 버튼은 숨김
+            button->setVisible(false);
         }
+    }
+    
+    // 스크롤 위젯 크기 조정
+    if (subtitleCount > 0) {
+        int rows = (subtitleCount + 3) / 4; // 4열 기준으로 행 계산
+        int heightNeeded = rows * 50 + 20; // 버튼 높이 + 여유 공간
+        quickScrollWidget->setMinimumHeight(heightNeeded);
+    } else {
+        quickScrollWidget->setMinimumHeight(50);
     }
 }
 
