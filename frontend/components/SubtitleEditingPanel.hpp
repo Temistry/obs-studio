@@ -41,6 +41,7 @@ private:
     QPushButton *cancelButton;
     QPushButton *bibleSearchButton;
     QPushButton *hymnSearchButton;
+    QPushButton *autoSplitButton;
     
     // 상태 관리
     int editingIndex;
@@ -75,6 +76,7 @@ public slots:
     void OnCancelEdit();
     void OnBibleSearch();
     void OnHymnSearch();
+    void OnAutoSplit();
     void OnAutoSave();
     
     // SubtitleManager 시그널 처리

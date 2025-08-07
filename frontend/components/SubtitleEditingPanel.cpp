@@ -69,6 +69,7 @@ void SubtitleEditingPanel::SetupUI()
     editButtonLayout = new QHBoxLayout();
     bibleSearchButton = new QPushButton("성경 검색", editScrollWidget);
     hymnSearchButton = new QPushButton("찬송가 검색", editScrollWidget);
+    autoSplitButton = new QPushButton("자동분리", editScrollWidget);
     saveButton = new QPushButton("저장", editScrollWidget);
     cancelButton = new QPushButton("취소", editScrollWidget);
     
@@ -78,6 +79,7 @@ void SubtitleEditingPanel::SetupUI()
     
     editButtonLayout->addWidget(bibleSearchButton);
     editButtonLayout->addWidget(hymnSearchButton);
+    editButtonLayout->addWidget(autoSplitButton);
     editButtonLayout->addStretch();
     editButtonLayout->addWidget(saveButton);
     editButtonLayout->addWidget(cancelButton);
@@ -112,6 +114,7 @@ void SubtitleEditingPanel::ConnectSignals()
     connect(cancelButton, &QPushButton::clicked, this, &SubtitleEditingPanel::OnCancelEdit);
     connect(bibleSearchButton, &QPushButton::clicked, this, &SubtitleEditingPanel::OnBibleSearch);
     connect(hymnSearchButton, &QPushButton::clicked, this, &SubtitleEditingPanel::OnHymnSearch);
+    connect(autoSplitButton, &QPushButton::clicked, this, &SubtitleEditingPanel::OnAutoSplit);
     
     // 내용 변경 감지
     connect(titleEdit, &QLineEdit::textChanged, this, &SubtitleEditingPanel::ContentChanged);
@@ -149,6 +152,7 @@ void SubtitleEditingPanel::SetEditMode(bool enabled, int index)
     cancelButton->setEnabled(enabled);
     bibleSearchButton->setEnabled(enabled);
     hymnSearchButton->setEnabled(enabled);
+    autoSplitButton->setEnabled(enabled);
     
     if (!enabled) {
         titleEdit->clear();
@@ -317,6 +321,71 @@ void SubtitleEditingPanel::OnHymnSearch()
             cursor.insertText(selectedText);
             contentEdit->setFocus();
         }
+    }
+}
+
+void SubtitleEditingPanel::OnAutoSplit()
+{
+    if (!subtitleManager || !isEditing) {
+        QMessageBox::information(this, "알림", "편집 중인 자막이 없습니다.");
+        return;
+    }
+    
+    QString content = GetCurrentContent();
+    if (content.isEmpty()) {
+        QMessageBox::information(this, "알림", "분리할 내용이 없습니다.");
+        return;
+    }
+    
+    // 빈 줄을 기준으로 내용 분리
+    QStringList sections = content.split("\n\n", Qt::SkipEmptyParts);
+    
+    if (sections.size() <= 1) {
+        QMessageBox::information(this, "알림", "분리할 구간이 없습니다.\n빈 줄(엔터 2번)로 구분된 문단이 필요합니다.");
+        return;
+    }
+    
+    // 사용자에게 확인 요청
+    int ret = QMessageBox::question(this, "자동분리", 
+                                   QString("현재 내용을 %1개의 자막으로 분리하시겠습니까?")
+                                   .arg(sections.size()),
+                                   QMessageBox::Yes | QMessageBox::No);
+    if (ret != QMessageBox::Yes) {
+        return;
+    }
+    
+    try {
+        QString baseTitle = GetCurrentTitle();
+        if (baseTitle.isEmpty()) {
+            baseTitle = "자막";
+        }
+        
+        // 현재 자막을 첫 번째 구간으로 업데이트
+        QString firstSectionTitle = QString("%1 1").arg(baseTitle);
+        subtitleManager->UpdateSubtitle(editingIndex, firstSectionTitle, sections[0].trimmed());
+        
+        // 나머지 구간들을 새로운 자막으로 추가
+        for (int i = 1; i < sections.size(); ++i) {
+            QString sectionTitle = QString("%1 %2").arg(baseTitle).arg(i + 1);
+            QString sectionContent = sections[i].trimmed();
+            
+            if (!sectionContent.isEmpty()) {
+                subtitleManager->AddSubtitle(sectionTitle, sectionContent);
+            }
+        }
+        
+        // 편집 종료
+        StopEditing();
+        
+        QMessageBox::information(this, "자동분리 완료", 
+                                QString("%1개의 자막으로 분리되었습니다.")
+                                .arg(sections.size()));
+        
+        blog(LOG_INFO, "[SubtitleEditingPanel] Auto-split completed: %d sections created", sections.size());
+        
+    } catch (const std::exception &e) {
+        blog(LOG_ERROR, "[SubtitleEditingPanel] Error during auto-split: %s", e.what());
+        QMessageBox::critical(this, "자동분리 오류", "자동분리 중 오류가 발생했습니다.");
     }
 }
 
