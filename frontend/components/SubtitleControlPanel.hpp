@@ -25,9 +25,6 @@
 #include <QTabWidget>
 #include <QScrollArea>
 #include "SubtitleManager.hpp"
-#include "SlideManager.hpp"
-#include "SlideEditorPanel.hpp"
-#include "SlideOutputManager.hpp"
 
 class SubtitleControlDock;
 
@@ -36,9 +33,6 @@ class SubtitleControlPanel : public QWidget {
 
 private:
     SubtitleManager *subtitleManager;
-    SlideManager *slideManager;
-    SlideEditorPanel *slideEditorPanel;
-    SlideOutputManager *slideOutputManager;
     
     // 메인 레이아웃
     QVBoxLayout *mainLayout;
@@ -89,6 +83,7 @@ private:
     QPushButton *saveButton;
     QPushButton *cancelButton;
     QPushButton *bibleSearchButton;
+    QPushButton *hymnSearchButton;
     
     // 빠른 전환 컨트롤
     QGroupBox *controlGroup;
@@ -104,16 +99,8 @@ private:
     QGridLayout *quickLayout;  
     QList<QPushButton*> quickButtons;
     
-    // PPT 스타일 슬라이드 에디터
-    QTabWidget *mainTabWidget;
-    QWidget *legacySubtitleTab;
-    QWidget *slideEditorTab;
-    QPushButton *openSlideEditorButton;
-    QPushButton *toggleModeButton;
     
     void SetupUI();
-    void SetupLegacySubtitleTab();
-    void SetupSlideEditorTab();
     void RefreshSourceList();
     void RefreshSubtitleList();
     void RefreshQuickButtons();
@@ -127,9 +114,6 @@ public:
     ~SubtitleControlPanel();
     
     SubtitleManager* GetSubtitleManager() const { return subtitleManager; }
-    SlideManager* GetSlideManager() const { return slideManager; }
-    SlideEditorPanel* GetSlideEditorPanel() const { return slideEditorPanel; }
-    SlideOutputManager* GetSlideOutputManager() const { return slideOutputManager; }
 
 private slots:
     // 소스 관련
@@ -155,6 +139,7 @@ private slots:
     void OnSaveSubtitle();
     void OnCancelEdit();
     void OnBibleSearch();
+    void OnHymnSearch();
     
     // 전환 컨트롤
     void OnPreviousSubtitle();
@@ -169,11 +154,6 @@ private slots:
     void OnWorshipFoldersChanged();
     void OnCurrentFolderChanged(const QString &folderId);
     
-    // 슬라이드 관련
-    void OnOpenSlideEditor();
-    void OnToggleMode();
-    void OnSlideOutputRequested(const QString &htmlContent);
-    void OnSlideOutputCleared();
 
 signals:
     void SubtitleControlPanelClosed();
@@ -244,6 +224,42 @@ private slots:
     void OnReferenceChanged();
     void OnKeywordChanged();
     void OnSearchResultSelected();
+};
+
+class HymnSearchDialog : public QDialog {
+    Q_OBJECT
+
+private:
+    QVBoxLayout *mainLayout = nullptr;
+    
+    // 찬송가 번호 입력
+    QHBoxLayout *numberLayout = nullptr;
+    QLabel *numberLabel = nullptr;
+    QSpinBox *hymnNumberSpinBox = nullptr;
+    QPushButton *searchButton = nullptr;
+    
+    // 미리보기 영역
+    QLabel *previewLabel = nullptr;
+    QTextEdit *previewText = nullptr;
+    
+    QDialogButtonBox *buttonBox = nullptr;
+    
+    QString currentHymnContent;
+    QString currentHymnTitle;
+    
+    void SetupUI();
+    void LoadHymnData(int hymnNumber);
+    QString GetHymnFilePath(int hymnNumber) const;
+
+public:
+    explicit HymnSearchDialog(QWidget *parent = nullptr);
+    
+    QString GetSelectedText() const;
+    QString GetSelectedTitle() const;
+
+private slots:
+    void OnHymnNumberChanged();
+    void OnSearchButtonClicked();
 };
 
 class SubtitleControlDock : public QDockWidget {

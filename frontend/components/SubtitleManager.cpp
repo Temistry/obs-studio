@@ -6,6 +6,7 @@
 #include <QTextStream>
 #include <QCoreApplication>
 #include <QStandardPaths>
+#include <QDir>
 #include <QSet>
 #include <algorithm>
 #include <obs.hpp>
@@ -685,8 +686,9 @@ void SubtitleManager::LoadBibleData()
     bibleData.clear();
     bookNames.clear();
     
-    // 성경 파일 경로
-    QString bibleFilePath = "D:/data/Obs_Extend/obs-studio/parser/bible.json";
+    // 성경 파일 경로 - 실행 파일 기준 상대경로로 설정
+    QString bibleFilePath = QCoreApplication::applicationDirPath() + "/../../data/parser/bible.json";
+    bibleFilePath = QDir::cleanPath(bibleFilePath);
     
     QFile file(bibleFilePath);
     if (!file.open(QIODevice::ReadOnly)) {

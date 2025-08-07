@@ -8,12 +8,9 @@
 #include "moc_SubtitleControlPanel.cpp"
 
 SubtitleControlPanel::SubtitleControlPanel(QWidget *parent)
-    : QWidget(parent), subtitleManager(nullptr), slideManager(nullptr), 
-      slideEditorPanel(nullptr), slideOutputManager(nullptr), editingIndex(-1)
+    : QWidget(parent), subtitleManager(nullptr), editingIndex(-1)
 {
     subtitleManager = new SubtitleManager(this);
-    slideManager = new SlideManager(this);
-    slideOutputManager = new SlideOutputManager(slideManager, this);
     SetupUI();
     
     // SubtitleManager 시그널 연결
@@ -50,28 +47,8 @@ void SubtitleControlPanel::SetupUI()
 {
     mainLayout = new QVBoxLayout(this);
     
-    // 탭 위젯 생성 (기존 자막 시스템 vs 새 슬라이드 시스템)
-    mainTabWidget = new QTabWidget(this);
-    
-    // 레거시 자막 탭 설정
-    legacySubtitleTab = new QWidget();
-    SetupLegacySubtitleTab();
-    mainTabWidget->addTab(legacySubtitleTab, "기존 자막 시스템");
-    
-    // 슬라이드 에디터 탭 설정
-    slideEditorTab = new QWidget();
-    SetupSlideEditorTab();
-    mainTabWidget->addTab(slideEditorTab, "PPT 스타일 슬라이드");
-    
-    mainLayout->addWidget(mainTabWidget);
-}
-
-void SubtitleControlPanel::SetupLegacySubtitleTab()
-{
-    QVBoxLayout *tabLayout = new QVBoxLayout(legacySubtitleTab);
-    
     // 메인 스크롤 영역 생성
-    mainScrollArea = new QScrollArea(legacySubtitleTab);
+    mainScrollArea = new QScrollArea(this);
     mainScrollWidget = new QWidget();
     
     mainSplitter = new QSplitter(Qt::Vertical, mainScrollWidget);
@@ -87,7 +64,7 @@ void SubtitleControlPanel::SetupLegacySubtitleTab()
     mainScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     mainScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     
-    tabLayout->addWidget(mainScrollArea);
+    mainLayout->addWidget(mainScrollArea);
     
     // 타겟 소스 선택
     sourceGroup = new QGroupBox("타겟 텍스트 소스", this);
@@ -204,7 +181,9 @@ void SubtitleControlPanel::SetupLegacySubtitleTab()
     saveButton = new QPushButton("저장", editScrollWidget);
     cancelButton = new QPushButton("취소", editScrollWidget);
     bibleSearchButton = new QPushButton("성경 검색", editScrollWidget);
+    hymnSearchButton = new QPushButton("찬송가 검색", editScrollWidget);
     editButtonLayout->addWidget(bibleSearchButton);
+    editButtonLayout->addWidget(hymnSearchButton);
     editButtonLayout->addStretch();
     editButtonLayout->addWidget(saveButton);
     editButtonLayout->addWidget(cancelButton);
@@ -229,6 +208,7 @@ void SubtitleControlPanel::SetupLegacySubtitleTab()
     connect(saveButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnSaveSubtitle);
     connect(cancelButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnCancelEdit);
     connect(bibleSearchButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnBibleSearch);
+    connect(hymnSearchButton, &QPushButton::clicked, this, &SubtitleControlPanel::OnHymnSearch);
     
     mainSplitter->addWidget(editGroup);
     
@@ -401,6 +381,9 @@ void SubtitleControlPanel::SetEditMode(bool enabled, int index)
     
     // 성경 검색 버튼은 편집 모드일 때만 활성화하고, 성경 데이터가 로드되었을 때만 활성화
     bibleSearchButton->setEnabled(enabled && subtitleManager->IsBibleDataLoaded());
+    
+    // 찬송가 검색 버튼은 편집 모드일 때만 활성화
+    hymnSearchButton->setEnabled(enabled);
     
     if (enabled && index >= 0) {
         SubtitleItem item = subtitleManager->GetSubtitle(index);
@@ -624,6 +607,20 @@ void SubtitleControlPanel::OnBibleSearch()
     }
 }
 
+void SubtitleControlPanel::OnHymnSearch()
+{
+    HymnSearchDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString title = dialog.GetSelectedTitle();
+        QString content = dialog.GetSelectedText();
+        
+        if (!title.isEmpty() && !content.isEmpty()) {
+            titleEdit->setText(title);
+            contentEdit->setPlainText(content);
+        }
+    }
+}
+
 void SubtitleControlPanel::OnPreviousSubtitle()
 {
     subtitleManager->PreviousSubtitle();
@@ -702,64 +699,6 @@ void SubtitleControlPanel::OnCurrentFolderChanged(const QString &folderId)
     UpdateCurrentLabel();
 }
 
-void SubtitleControlPanel::SetupSlideEditorTab()
-{
-    QVBoxLayout *tabLayout = new QVBoxLayout(slideEditorTab);
-    
-    // 슬라이드 에디터 패널 생성
-    slideEditorPanel = new SlideEditorPanel(slideEditorTab);
-    slideEditorPanel->setSlideManager(slideManager);
-    
-    tabLayout->addWidget(slideEditorPanel);
-    
-    // 출력 관리자와 에디터 패널 연결
-    connect(slideEditorPanel, &SlideEditorPanel::slideOutputRequested,
-            this, &SubtitleControlPanel::OnSlideOutputRequested);
-    connect(slideEditorPanel, &SlideEditorPanel::outputCleared,
-            this, &SubtitleControlPanel::OnSlideOutputCleared);
-}
-
-void SubtitleControlPanel::OnOpenSlideEditor()
-{
-    if (slideEditorPanel) {
-        mainTabWidget->setCurrentWidget(slideEditorTab);
-    }
-}
-
-void SubtitleControlPanel::OnToggleMode()
-{
-    // 탭 전환
-    int currentIndex = mainTabWidget->currentIndex();
-    int newIndex = (currentIndex == 0) ? 1 : 0;
-    mainTabWidget->setCurrentIndex(newIndex);
-}
-
-void SubtitleControlPanel::OnSlideOutputRequested(const QString &htmlContent)
-{
-    // HTML 출력을 OBS 브라우저 소스로 전송
-    if (slideOutputManager) {
-        // 브라우저 소스가 설정되어 있지 않다면 기본 소스를 찾아서 설정
-        if (slideOutputManager->getTargetBrowserSource().isEmpty()) {
-            // "Slide Output" 또는 "Browser Source" 이름의 소스를 찾기
-            OBSSourceAutoRelease source = obs_get_source_by_name("Slide Output");
-            if (!source) {
-                source = obs_get_source_by_name("Browser Source");
-            }
-            if (source) {
-                slideOutputManager->setTargetBrowserSource(obs_source_get_name(source));
-            }
-        }
-        
-        slideOutputManager->outputCurrentSlide();
-    }
-}
-
-void SubtitleControlPanel::OnSlideOutputCleared()
-{
-    if (slideOutputManager) {
-        slideOutputManager->clearOutput();
-    }
-}
 
 void SubtitleControlPanel::closeEvent(QCloseEvent *event)
 {
@@ -1171,4 +1110,164 @@ QString BibleSearchDialog::GetSelectedTitle() const
         }
     }
     return QString();
+}
+
+// HymnSearchDialog 구현
+HymnSearchDialog::HymnSearchDialog(QWidget *parent)
+    : QDialog(parent)
+{
+    setWindowTitle("찬송가 검색");
+    setModal(true);
+    resize(500, 400);
+    
+    SetupUI();
+    
+    // 1번 찬송가로 초기화
+    hymnNumberSpinBox->setValue(1);
+    OnHymnNumberChanged();
+}
+
+void HymnSearchDialog::SetupUI()
+{
+    mainLayout = new QVBoxLayout(this);
+    
+    // 찬송가 번호 입력
+    numberLayout = new QHBoxLayout();
+    numberLabel = new QLabel("찬송가 번호:", this);
+    hymnNumberSpinBox = new QSpinBox(this);
+    hymnNumberSpinBox->setRange(1, 645);
+    hymnNumberSpinBox->setValue(1);
+    searchButton = new QPushButton("검색", this);
+    
+    numberLayout->addWidget(numberLabel);
+    numberLayout->addWidget(hymnNumberSpinBox);
+    numberLayout->addWidget(searchButton);
+    numberLayout->addStretch();
+    
+    // 미리보기 영역
+    previewLabel = new QLabel("미리보기:", this);
+    previewText = new QTextEdit(this);
+    previewText->setReadOnly(true);
+    previewText->setMinimumHeight(250);
+    
+    // 버튼박스
+    buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    
+    mainLayout->addLayout(numberLayout);
+    mainLayout->addWidget(previewLabel);
+    mainLayout->addWidget(previewText);
+    mainLayout->addWidget(buttonBox);
+    
+    // 시그널 연결
+    connect(hymnNumberSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &HymnSearchDialog::OnHymnNumberChanged);
+    connect(searchButton, &QPushButton::clicked,
+            this, &HymnSearchDialog::OnSearchButtonClicked);
+    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    
+    // 초기 상태에서 OK 버튼 비활성화
+    QPushButton *okButton = buttonBox->button(QDialogButtonBox::Ok);
+    if (okButton) {
+        okButton->setEnabled(false);
+    }
+}
+
+void HymnSearchDialog::OnHymnNumberChanged()
+{
+    LoadHymnData(hymnNumberSpinBox->value());
+}
+
+void HymnSearchDialog::OnSearchButtonClicked()
+{
+    LoadHymnData(hymnNumberSpinBox->value());
+}
+
+void HymnSearchDialog::LoadHymnData(int hymnNumber)
+{
+    QString filePath = GetHymnFilePath(hymnNumber);
+    QFile file(filePath);
+    
+    if (!file.exists()) {
+        previewText->setPlainText(QString("찬송가 %1장을 찾을 수 없습니다.").arg(hymnNumber));
+        currentHymnContent.clear();
+        currentHymnTitle.clear();
+        
+        QPushButton *okButton = buttonBox->button(QDialogButtonBox::Ok);
+        if (okButton) {
+            okButton->setEnabled(false);
+        }
+        return;
+    }
+    
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        previewText->setPlainText(QString("찬송가 %1장 파일을 읽을 수 없습니다.").arg(hymnNumber));
+        currentHymnContent.clear();
+        currentHymnTitle.clear();
+        
+        QPushButton *okButton = buttonBox->button(QDialogButtonBox::Ok);
+        if (okButton) {
+            okButton->setEnabled(false);
+        }
+        return;
+    }
+    
+    QTextStream stream(&file);
+    stream.setEncoding(QStringConverter::Encoding::Utf8);
+    QString content = stream.readAll();
+    file.close();
+    
+    if (content.isEmpty()) {
+        previewText->setPlainText(QString("찬송가 %1장이 비어있습니다.").arg(hymnNumber));
+        currentHymnContent.clear();
+        currentHymnTitle.clear();
+        
+        QPushButton *okButton = buttonBox->button(QDialogButtonBox::Ok);
+        if (okButton) {
+            okButton->setEnabled(false);
+        }
+        return;
+    }
+    
+    currentHymnContent = content;
+    currentHymnTitle = QString("찬송가 %1장").arg(hymnNumber);
+    
+    // 미리보기 텍스트 설정
+    QString previewHtml = QString("<h3>찬송가 %1장</h3><br>").arg(hymnNumber);
+    
+    // 줄별로 나누어서 HTML 형태로 변환
+    QStringList lines = content.split('\n');
+    for (const QString &line : lines) {
+        QString trimmedLine = line.trimmed();
+        if (!trimmedLine.isEmpty()) {
+            previewHtml += trimmedLine + "<br>";
+        } else {
+            previewHtml += "<br>";
+        }
+    }
+    
+    previewText->setHtml(previewHtml);
+    
+    // OK 버튼 활성화
+    QPushButton *okButton = buttonBox->button(QDialogButtonBox::Ok);
+    if (okButton) {
+        okButton->setEnabled(true);
+    }
+}
+
+QString HymnSearchDialog::GetHymnFilePath(int hymnNumber) const
+{
+    QString fileName = QString("%1.txt").arg(hymnNumber, 3, 10, QChar('0'));
+    QString bibleFilePath = QCoreApplication::applicationDirPath() + "/../../data/parser/bible_songs/" + fileName;
+    return bibleFilePath;
+}
+
+QString HymnSearchDialog::GetSelectedText() const
+{
+    return currentHymnContent;
+}
+
+QString HymnSearchDialog::GetSelectedTitle() const
+{
+    return currentHymnTitle;
 }
