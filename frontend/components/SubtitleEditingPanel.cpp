@@ -50,16 +50,8 @@ void SubtitleEditingPanel::SetupUI()
     editScrollWidget = new QWidget();
     editScrollLayout = new QVBoxLayout(editScrollWidget);
     
-    // 제목 편집
-    titleLayout = new QHBoxLayout();
-    titleLabel = new QLabel("제목:", editScrollWidget);
-    titleEdit = new QLineEdit(editScrollWidget);
-    titleEdit->setPlaceholderText("자막 제목을 입력하세요");
-    titleLayout->addWidget(titleLabel);
-    titleLayout->addWidget(titleEdit);
-    
     // 내용 편집
-    contentLabel = new QLabel("내용:", editScrollWidget);
+    contentLabel = new QLabel("자막 내용:", editScrollWidget);
     contentEdit = new QTextEdit(editScrollWidget);
     contentEdit->setPlaceholderText("자막 내용을 입력하세요");
     contentEdit->setMinimumHeight(100);
@@ -85,7 +77,6 @@ void SubtitleEditingPanel::SetupUI()
     editButtonLayout->addWidget(cancelButton);
     
     // 스크롤 위젯에 레이아웃 추가
-    editScrollLayout->addLayout(titleLayout);
     editScrollLayout->addWidget(contentLabel);
     editScrollLayout->addWidget(contentEdit);
     editScrollLayout->addLayout(editButtonLayout);
@@ -117,7 +108,6 @@ void SubtitleEditingPanel::ConnectSignals()
     connect(autoSplitButton, &QPushButton::clicked, this, &SubtitleEditingPanel::OnAutoSplit);
     
     // 내용 변경 감지
-    connect(titleEdit, &QLineEdit::textChanged, this, &SubtitleEditingPanel::ContentChanged);
     connect(contentEdit, &QTextEdit::textChanged, this, &SubtitleEditingPanel::ContentChanged);
     connect(contentEdit, &QTextEdit::textChanged, [this]() {
         autoSaveTimer->stop();
@@ -146,7 +136,6 @@ void SubtitleEditingPanel::SetEditMode(bool enabled, int index)
     isEditing = enabled;
     editingIndex = index;
     
-    titleEdit->setEnabled(enabled);
     contentEdit->setEnabled(enabled);
     saveButton->setEnabled(enabled);
     cancelButton->setEnabled(enabled);
@@ -155,7 +144,6 @@ void SubtitleEditingPanel::SetEditMode(bool enabled, int index)
     autoSplitButton->setEnabled(enabled);
     
     if (!enabled) {
-        titleEdit->clear();
         contentEdit->clear();
         editingIndex = -1;
         editGroup->setTitle("자막 편집");
@@ -177,11 +165,10 @@ void SubtitleEditingPanel::StartEditing(int index)
     }
     
     SubtitleItem item = subtitleManager->GetSubtitle(index);
-    titleEdit->setText(item.title);
     contentEdit->setPlainText(item.content);
     
     SetEditMode(true, index);
-    titleEdit->setFocus();
+    contentEdit->setFocus();
     
     emit EditingStarted(index);
     blog(LOG_INFO, "[SubtitleEditingPanel] Started editing subtitle at index %d", index);
@@ -189,11 +176,10 @@ void SubtitleEditingPanel::StartEditing(int index)
 
 void SubtitleEditingPanel::StartNewSubtitle()
 {
-    titleEdit->clear();
     contentEdit->clear();
     
     SetEditMode(true, -1);
-    titleEdit->setFocus();
+    contentEdit->setFocus();
     
     emit EditingStarted(-1);
     blog(LOG_INFO, "[SubtitleEditingPanel] Started creating new subtitle");
@@ -206,25 +192,18 @@ void SubtitleEditingPanel::StopEditing()
     blog(LOG_INFO, "[SubtitleEditingPanel] Stopped editing");
 }
 
-QString SubtitleEditingPanel::GetCurrentTitle() const
-{
-    return titleEdit->text().trimmed();
-}
-
 QString SubtitleEditingPanel::GetCurrentContent() const
 {
     return contentEdit->toPlainText().trimmed();
 }
 
-void SubtitleEditingPanel::SetCurrentContent(const QString &title, const QString &content)
+void SubtitleEditingPanel::SetCurrentContent(const QString &content)
 {
-    titleEdit->setText(title);
     contentEdit->setPlainText(content);
 }
 
 void SubtitleEditingPanel::ClearContent()
 {
-    titleEdit->clear();
     contentEdit->clear();
 }
 
@@ -232,13 +211,18 @@ void SubtitleEditingPanel::OnSaveSubtitle()
 {
     if (!subtitleManager || !isEditing) return;
     
-    QString title = GetCurrentTitle();
     QString content = GetCurrentContent();
     
     if (content.isEmpty()) {
         QMessageBox::warning(this, "경고", "자막 내용이 비어있습니다.");
         contentEdit->setFocus();
         return;
+    }
+    
+    // 내용의 첫 줄을 제목으로 사용 (최대 50자)
+    QString title = content.split('\n')[0].left(50).trimmed();
+    if (title.length() == 50) {
+        title += "...";
     }
     
     try {
@@ -289,11 +273,6 @@ void SubtitleEditingPanel::OnBibleSearch()
         QString selectedTitle = dialog.GetSelectedTitle();
         
         if (!selectedText.isEmpty()) {
-            // 제목이 비어있다면 성경 구절 제목을 사용
-            if (titleEdit->text().trimmed().isEmpty()) {
-                titleEdit->setText(selectedTitle);
-            }
-            
             // 현재 커서 위치에 텍스트 삽입
             QTextCursor cursor = contentEdit->textCursor();
             cursor.insertText(selectedText);
@@ -311,11 +290,6 @@ void SubtitleEditingPanel::OnHymnSearch()
         QString selectedTitle = dialog.GetSelectedTitle();
         
         if (!selectedText.isEmpty()) {
-            // 제목이 비어있다면 찬송가 제목을 사용
-            if (titleEdit->text().trimmed().isEmpty()) {
-                titleEdit->setText(selectedTitle);
-            }
-            
             // 현재 커서 위치에 텍스트 삽입
             QTextCursor cursor = contentEdit->textCursor();
             cursor.insertText(selectedText);
@@ -355,21 +329,22 @@ void SubtitleEditingPanel::OnAutoSplit()
     }
     
     try {
-        QString baseTitle = GetCurrentTitle();
-        if (baseTitle.isEmpty()) {
-            baseTitle = "자막";
-        }
-        
-        // 현재 자막을 첫 번째 구간으로 업데이트
-        QString firstSectionTitle = QString("%1 1").arg(baseTitle);
-        subtitleManager->UpdateSubtitle(editingIndex, firstSectionTitle, sections[0].trimmed());
-        
-        // 나머지 구간들을 새로운 자막으로 추가
-        for (int i = 1; i < sections.size(); ++i) {
-            QString sectionTitle = QString("%1 %2").arg(baseTitle).arg(i + 1);
+        // 각 구간의 내용에서 제목을 자동 생성
+        for (int i = 0; i < sections.size(); ++i) {
             QString sectionContent = sections[i].trimmed();
+            if (sectionContent.isEmpty()) continue;
             
-            if (!sectionContent.isEmpty()) {
+            // 내용의 첫 줄을 제목으로 사용 (최대 50자)
+            QString sectionTitle = sectionContent.split('\n')[0].left(50).trimmed();
+            if (sectionTitle.length() == 50) {
+                sectionTitle += "...";
+            }
+            
+            if (i == 0) {
+                // 현재 자막을 첫 번째 구간으로 업데이트
+                subtitleManager->UpdateSubtitle(editingIndex, sectionTitle, sectionContent);
+            } else {
+                // 나머지 구간들을 새로운 자막으로 추가
                 subtitleManager->AddSubtitle(sectionTitle, sectionContent);
             }
         }

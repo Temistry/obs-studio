@@ -293,11 +293,21 @@ void SubtitleControlPanel::RefreshSubtitleList()
     QList<SubtitleItem> subtitles = subtitleManager->GetAllSubtitles();
     for (int i = 0; i < subtitles.size(); ++i) {
         const SubtitleItem &item = subtitles[i];
-        QString displayText = QString("%1. %2").arg(i + 1).arg(item.title);
+        
+        // 내용의 첫 줄을 가져와서 표시용 텍스트 생성 (최대 40자)
+        QString contentPreview = item.content.split('\n')[0].trimmed();
+        if (contentPreview.length() > 40) {
+            contentPreview = contentPreview.left(40) + "...";
+        }
+        
+        QString displayText = QString("%1. %2").arg(i + 1).arg(contentPreview);
         if (!item.enabled) {
             displayText += " (비활성)";
         }
-        subtitleList->addItem(displayText);
+        
+        QListWidgetItem *listItem = new QListWidgetItem(displayText);
+        listItem->setToolTip(item.content); // 전체 내용을 툴팁으로 표시
+        subtitleList->addItem(listItem);
     }
 }
 
@@ -326,10 +336,17 @@ void SubtitleControlPanel::RefreshQuickButtons()
         
         if (i < subtitleCount) {
             const SubtitleItem &item = subtitles[i];
-            QString buttonText = QString("%1\n%2").arg(i + 1).arg(item.title);
+            
+            // 내용의 첫 줄을 가져와서 버튼 텍스트 생성 (최대 20자)
+            QString contentPreview = item.content.split('\n')[0].trimmed();
+            if (contentPreview.length() > 20) {
+                contentPreview = contentPreview.left(20) + "...";
+            }
+            
+            QString buttonText = QString("%1\n%2").arg(i + 1).arg(contentPreview);
             button->setText(buttonText);
             button->setEnabled(item.enabled);
-            button->setToolTip(item.content);
+            button->setToolTip(item.content); // 전체 내용을 툴팁으로 표시
             button->setVisible(true);
         } else {
             // 사용하지 않는 버튼은 숨김
@@ -352,7 +369,14 @@ void SubtitleControlPanel::UpdateCurrentLabel()
     int currentIndex = subtitleManager->GetCurrentIndex();
     if (currentIndex >= 0) {
         SubtitleItem item = subtitleManager->GetSubtitle(currentIndex);
-        currentLabel->setText(QString("현재: %1. %2").arg(currentIndex + 1).arg(item.title));
+        
+        // 내용의 첫 줄을 가져와서 표시용 텍스트 생성 (최대 30자)
+        QString contentPreview = item.content.split('\n')[0].trimmed();
+        if (contentPreview.length() > 30) {
+            contentPreview = contentPreview.left(30) + "...";
+        }
+        
+        currentLabel->setText(QString("현재: %1. %2").arg(currentIndex + 1).arg(contentPreview));
         
         // 빠른 액세스 버튼 하이라이트
         for (int i = 0; i < quickButtons.size(); ++i) {
@@ -510,8 +534,15 @@ void SubtitleControlPanel::OnRemoveSubtitle()
     int row = subtitleList->currentRow();
     if (row >= 0) {
         SubtitleItem item = subtitleManager->GetSubtitle(row);
+        
+        // 내용의 첫 줄을 가져와서 미리보기 생성 (최대 50자)
+        QString contentPreview = item.content.split('\n')[0].trimmed();
+        if (contentPreview.length() > 50) {
+            contentPreview = contentPreview.left(50) + "...";
+        }
+        
         int ret = QMessageBox::question(this, "자막 삭제", 
-                                       QString("'%1' 자막을 삭제하시겠습니까?").arg(item.title),
+                                       QString("'%1' 자막을 삭제하시겠습니까?").arg(contentPreview),
                                        QMessageBox::Yes | QMessageBox::No);
         if (ret == QMessageBox::Yes) {
             if (!subtitleManager->GetCurrentFolderId().isEmpty()) {

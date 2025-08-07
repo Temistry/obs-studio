@@ -26,10 +26,6 @@ private:
     QWidget *editScrollWidget;
     QVBoxLayout *editScrollLayout;
     
-    // 제목 편집
-    QHBoxLayout *titleLayout;
-    QLabel *titleLabel;
-    QLineEdit *titleEdit;
     
     // 내용 편집
     QLabel *contentLabel;
@@ -66,9 +62,8 @@ public:
     bool IsEditing() const { return isEditing; }
     
     // 내용 접근
-    QString GetCurrentTitle() const;
     QString GetCurrentContent() const;
-    void SetCurrentContent(const QString &title, const QString &content);
+    void SetCurrentContent(const QString &content);
     void ClearContent();
 
 public slots:
