@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28...3.30)
+cmake_minimum_required(VERSION 3.27...3.30)
 
 if(NOT ENABLE_SCRIPTING)
   target_disable_feature(obs-scripting "Scripting support")

@@ -32,6 +32,10 @@
 !INSTALL
 !README.rst
 !parser
+!build-simple.bat
+!clean.bat
+!setup-vs-env.bat
+!build.bat
 
 # Exclude lock files
 *.lock.json

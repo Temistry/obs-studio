@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28...3.30)
+cmake_minimum_required(VERSION 3.27...3.30)
 
 macro(check_vlc_path)
   find_package(PkgConfig QUIET)

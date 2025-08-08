@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28...3.30)
+cmake_minimum_required(VERSION 3.27...3.30)
 
 option(ENABLE_V4L2 "Build OBS with v4l2 support" ON)
 option(ENABLE_UDEV "Build linux-v4l2 with UDEV support" ON)
